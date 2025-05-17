@@ -4,9 +4,9 @@ go 1.24
 
 require (
 	github.com/aws/aws-sdk-go v1.55.7
-	github.com/google/go-cmp v0.4.0
-	github.com/mattn/go-isatty v0.0.20
-	github.com/sanity-io/litter v1.2.0
+	github.com/sanity-io/litter v1.5.8
+	github.com/spf13/pflag v1.0.6
+	golang.org/x/term v0.32.0
 )
 
 require (

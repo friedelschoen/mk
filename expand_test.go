@@ -92,7 +92,7 @@ func TestExpand(t *testing.T) {
 		{
 			input: "\"$targetpath\"",
 			vars: map[string][]string{
-				"targetpath": []string{"./testdata"},
+				"targetpath": {"./testdata"},
 			},
 			expandticks: false,
 			want:        []string{"./testdata"},

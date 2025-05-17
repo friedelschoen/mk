@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mattn/go-isatty"
+	"github.com/spf13/pflag"
+	"golang.org/x/term"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 	defaultShell string
 
 	// Do not drop shell arguments when calling with no further arguments
-	// This works around `sh -c commands...` being a thing, but allows the `rc -v commands...` argument-less flags
+	// This works around `sh -c commands...` being a thing, but allows the `rc -v commands...` argument-less pflags
 	dontDropArgs bool
 
 	// True if we are ignoring timestamps and rebuilding everything.
@@ -303,20 +303,20 @@ func main() {
 	var shallowrebuild bool
 	var quiet bool
 
-	flag.StringVar(&directory, "C", "", "directory to change in to")
-	flag.StringVar(&mkfilepath, "f", "mkfile", "use the given file as mkfile")
-	flag.BoolVar(&dryrun, "n", false, "print commands without actually executing")
-	flag.BoolVar(&shallowrebuild, "r", false, "force building of just targets")
-	flag.BoolVar(&rebuildall, "a", false, "force building of all dependencies")
-	flag.IntVar(&subprocsAllowed, "p", runtime.NumCPU(), "maximum number of jobs to execute in parallel")
-	flag.IntVar(&maxRuleCnt, "l", 1, "maximum number of times a specific rule can be applied (recursion)")
-	flag.BoolVar(&interactive, "i", false, "prompt before executing rules")
-	flag.BoolVar(&quiet, "q", false, "don't print recipes before executing them")
-	flag.BoolVar(&color, "color", isatty.IsTerminal(os.Stdout.Fd()), "turn color on/off")
-	flag.StringVar(&defaultShell, "shell", "sh -c", "default shell to use if none are specified via $shell")
-	flag.BoolVar(&dontDropArgs, "F", false, "don't drop shell arguments when no further arguments are specified")
+	pflag.StringVarP(&directory, "directory", "C", "", "directory to change in to")
+	pflag.StringVarP(&mkfilepath, "file", "f", "mkfile", "use the given file as mkfile")
+	pflag.BoolVarP(&dryrun, "dry-run", "n", false, "print commands without actually executing")
+	pflag.BoolVar(&shallowrebuild, "force-target", false, "force building of just targets")
+	pflag.BoolVar(&rebuildall, "force-all", false, "force building of all dependencies")
+	pflag.IntVarP(&subprocsAllowed, "jobs", "j", runtime.NumCPU(), "maximum number of jobs to execute in parallel")
+	pflag.IntVarP(&maxRuleCnt, "depth", "d", 1, "maximum number of times a specific rule can be applied (recursion)")
+	pflag.BoolVarP(&interactive, "interactive", "i", false, "ask before executing rules")
+	pflag.BoolVarP(&quiet, "quiet", "q", false, "don't print recipes before executing them")
+	pflag.BoolVar(&color, "color", term.IsTerminal(int(os.Stdout.Fd())), "turn color on/off")
+	pflag.StringVar(&defaultShell, "shell", "sh -c", "default shell to use if none are specified via $shell")
+	pflag.BoolVar(&dontDropArgs, "drop-shell-arg", false, "don't drop shell arguments when no further arguments are specified")
 	// TODO(rjk): P9P mk command line compatability.
-	flag.Parse()
+	pflag.Parse()
 
 	if directory != "" {
 		err := os.Chdir(directory)
@@ -348,7 +348,7 @@ func main() {
 		}
 	}
 
-	targets := flag.Args()
+	targets := pflag.Args()
 
 	// build the first non-meta rule in the makefile, if none are given explicitly
 	if len(targets) == 0 {
