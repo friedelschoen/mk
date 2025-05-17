@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -41,16 +40,15 @@ type nodeFlag int
 
 const (
 	nodeFlagCycle    nodeFlag = 0x0002
-	nodeFlagReady             = 0x0004
-	nodeFlagProbable          = 0x0100
-	nodeFlagVacuous           = 0x0200
+	nodeFlagReady    nodeFlag = 0x0004
+	nodeFlagProbable nodeFlag = 0x0100
+	nodeFlagVacuous  nodeFlag = 0x0200
 )
 
 // A node in the dependency graph
 type node struct {
 	r         *rule             // rule to be applied
 	name      string            // target name
-	prog      string            // custom program to compare times
 	t         time.Time         // file modification time
 	exists    bool              // does a non-virtual target exist
 	prereqs   []*edge           // prerequisite rules
@@ -101,19 +99,6 @@ func (g *graph) newnode(name string) *node {
 	u.updateTimestamp()
 	g.nodes[name] = u
 	return u
-}
-
-// Print a graph in graphviz format.
-func (g *graph) visualize(w io.Writer) {
-	fmt.Fprintln(w, "digraph mk {")
-	for t, u := range g.nodes {
-		for i := range u.prereqs {
-			if u.prereqs[i].v != nil {
-				fmt.Fprintf(w, "    \"%s\" -> \"%s\";\n", t, u.prereqs[i].v.name)
-			}
-		}
-	}
-	fmt.Fprintln(w, "}")
 }
 
 // Create a new arc.
@@ -366,7 +351,7 @@ func (g *graph) ambiguous(u *node) {
 // Print a trace of rules, k
 func (g *graph) trace(name string, e *edge) {
 	fmt.Fprintf(os.Stderr, "\t%s", name)
-	for true {
+	for {
 		prereqname := ""
 		if e.v != nil {
 			prereqname = e.v.name
@@ -379,9 +364,7 @@ func (g *graph) trace(name string, e *edge) {
 					continue
 				}
 			}
-			break
-		} else {
-			break
 		}
+		break
 	}
 }

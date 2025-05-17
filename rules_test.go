@@ -6,7 +6,7 @@ import (
 )
 
 func TestMatchMetaRule(t *testing.T) {
-	regex, err := regexp.Compile("^data/processed/(\\d+)/mapping_k10.bam.bai$")
+	regex, err := regexp.Compile(`^data/processed/(\d+)/mapping_k10.bam.bai$`)
 	if err != nil {
 		t.Error("Failure to compile regex pattern")
 	}

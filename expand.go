@@ -128,7 +128,7 @@ func expandDoubleQuoted(input string, vars map[string][]string, expandBackticks 
 	return input, len(input)
 }
 
-// Expand a single quoted string starting after a '\''
+// Expand a single quoted string starting after a '\”
 func expandSingleQuoted(input string) (string, int) {
 	j := strings.Index(input, "'")
 	if j < 0 {
@@ -223,33 +223,6 @@ func expandSigil(input string, vars map[string][]string) ([]string, int) {
 	}
 
 	return []string{"$" + input}, len(input)
-}
-
-// Find and expand all sigils.
-func expandSigils(input string, vars map[string][]string) []string {
-	parts := make([]string, 0)
-	expanded := ""
-	for i := 0; i < len(input); {
-		j := strings.IndexRune(input[i:], '$')
-		if j < 0 {
-			expanded += input[i:]
-			break
-		}
-
-		ex, k := expandSigil(input[j+1:], vars)
-		if len(ex) > 0 {
-			ex[0] = expanded + ex[0]
-			expanded = ex[len(ex)-1]
-			parts = append(parts, ex[:len(ex)-1]...)
-		}
-		i = k
-	}
-
-	if len(expanded) > 0 {
-		parts = append(parts, expanded)
-	}
-
-	return parts
 }
 
 // Find and expand all sigils in a recipe, producing a flat string.

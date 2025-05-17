@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -36,7 +37,11 @@ func updateHttpTimestamp(u *node) {
 }
 
 func updateS3Timestamp(u *node, uri *url.URL) {
-	svc := s3.New(session.New())
+	ses, err := session.NewSession()
+	if err != nil {
+		panic(fmt.Errorf("unable to create a session: %w", err))
+	}
+	svc := s3.New(ses)
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(uri.Host),
 		Key:    aws.String(uri.Path[1:]),

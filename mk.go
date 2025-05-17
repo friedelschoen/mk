@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -107,7 +106,6 @@ const (
 )
 
 // Build a node's prereqs. Block until completed.
-//
 func mkNodePrereqs(g *graph, u *node, e *edge, prereqs []*node, dryrun bool,
 	required bool) nodeStatus {
 	prereqstat := make(chan nodeStatus)
@@ -145,11 +143,11 @@ func mkNodePrereqs(g *graph, u *node, e *edge, prereqs []*node, dryrun bool,
 // concurrently.
 //
 // Args:
-//  g: Graph in which the node lives.
-//  u: Node to (possibly) build.
-//  dryrun: Don't actually build anything, just pretend.
-//  required: Avoid building this node, unless its prereqs are out of date.
 //
+//	g: Graph in which the node lives.
+//	u: Node to (possibly) build.
+//	dryrun: Don't actually build anything, just pretend.
+//	required: Avoid building this node, unless its prereqs are out of date.
 func mkNode(g *graph, u *node, dryrun bool, required bool) {
 	// try to claim on this node
 	u.mutex.Lock()
@@ -270,24 +268,6 @@ func mkPrintError(msg string) {
 	}
 }
 
-func mkPrintSuccess(msg string) {
-	if !color {
-		fmt.Println(msg)
-	} else {
-		fmt.Printf("%s%s%s\n", ansiTermGreen, msg, ansiTermDefault)
-	}
-}
-
-func mkPrintMessage(msg string) {
-	mkMsgMutex.Lock()
-	if !color {
-		fmt.Println(msg)
-	} else {
-		fmt.Printf("%s%s%s\n", ansiTermBlue, msg, ansiTermDefault)
-	}
-	mkMsgMutex.Unlock()
-}
-
 func mkPrintRecipe(target string, recipe string, quiet bool) {
 	mkMsgMutex.Lock()
 	if !color {
@@ -345,12 +325,10 @@ func main() {
 		}
 	}
 
-	mkfile, err := os.Open(mkfilepath)
+	input, err := os.ReadFile(mkfilepath)
 	if err != nil {
 		mkError("no mkfile found")
 	}
-	input, _ := ioutil.ReadAll(mkfile)
-	mkfile.Close()
 
 	abspath, err := filepath.Abs(mkfilepath)
 	if err != nil {
@@ -414,7 +392,7 @@ func main() {
 			c, _, err := in.ReadRune()
 			if err != nil {
 				return
-			} else if strings.IndexRune(" \n\t\r", c) >= 0 {
+			} else if strings.ContainsRune(" \n\t\r", c) {
 				continue
 			} else if c == 'y' {
 				break

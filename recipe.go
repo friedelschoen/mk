@@ -25,7 +25,7 @@ func stripIndentation(s string, mincol int) string {
 		i := 0
 		for i < len(line) && col < mincol {
 			c, w := utf8.DecodeRuneInString(line[i:])
-			if strings.IndexRune(" \t\n", c) >= 0 {
+			if strings.ContainsRune(" \t\n", c) {
 				col += 1
 				i += w
 			} else {
@@ -130,16 +130,17 @@ func dorecipe(target string, u *node, e *edge, dryrun bool) bool {
 // Execute a subprocess (typically a recipe).
 //
 // Args:
-//   program: Program path or name located in PATH
-//   input: String piped into the program's stdin
-//   capture_out: If true, capture and return the program's stdout rather than echoing it.
+//
+//	program: Program path or name located in PATH
+//	input: String piped into the program's stdin
+//	capture_out: If true, capture and return the program's stdout rather than echoing it.
 //
 // Returns
-//   (output, success)
-//   output is an empty string of catputer_out is false, or the collected output from the profram is true.
 //
-//   success is true if the exit code was 0 and false otherwise
+//	(output, success)
+//	output is an empty string of catputer_out is false, or the collected output from the profram is true.
 //
+//	success is true if the exit code was 0 and false otherwise
 func subprocess(program string,
 	args []string,
 	env []string,
