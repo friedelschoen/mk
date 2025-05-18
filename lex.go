@@ -2,20 +2,21 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
-	"unicode/utf8"
+	"unicode"
 )
 
 type tokenType int
 
-const eof rune = '\000'
+const eof rune = '\u0000'
 
 // Rune's that cannot be part of a bare (unquoted) string.
 const nonBareRunes = " \t\n\r\\=:#'\"$"
 
 // Return true if the string contains whitespace only.
-func onlyWhitespace(s string) bool {
-	return !strings.ContainsAny(s, " \t\r\n")
+func onlyWhitespace(s []rune) bool {
+	return !slices.ContainsFunc(s, unicode.IsSpace)
 }
 
 const (
@@ -69,7 +70,7 @@ func (t *token) String() string {
 }
 
 type lexer struct {
-	input     string     // input string to be lexed
+	input     []rune     // input string to be lexed
 	output    chan token // channel on which tokens are sent
 	start     int        // token beginning
 	startcol  int        // column on which the token begins
@@ -93,20 +94,11 @@ func (l *lexer) lexerror(what string) {
 }
 
 // Return the nth character without advancing.
-func (l *lexer) peekN(n int) (c rune) {
-	pos := l.pos
-	var width int
-	i := 0
-	for ; i <= n && pos < len(l.input); i++ {
-		c, width = utf8.DecodeRuneInString(l.input[pos:])
-		pos += width
+func (l *lexer) peekN(n int) rune {
+	if l.pos+n >= len(l.input) {
+		return 0
 	}
-
-	if i <= n {
-		return eof
-	}
-
-	return
+	return l.input[l.pos+n]
 }
 
 // Return the next character without advancing.
@@ -119,15 +111,15 @@ func (l *lexer) next() rune {
 	if l.pos >= len(l.input) {
 		return eof
 	}
-	c, width := utf8.DecodeRuneInString(l.input[l.pos:])
-	l.pos += width
+	c := l.input[l.pos]
+	l.pos++
 
 	if c == '\n' {
 		l.col = 0
-		l.line += 1
+		l.line++
 		l.indented = true
 	} else {
-		l.col += 1
+		l.col++
 		if !strings.ContainsRune(" \t", c) {
 			l.indented = false
 		}
@@ -144,7 +136,7 @@ func (l *lexer) skip() {
 }
 
 func (l *lexer) emit(typ tokenType) {
-	l.output <- token{typ, l.input[l.start:l.pos], l.line, l.startcol}
+	l.output <- token{typ, string(l.input[l.start:l.pos]), l.line, l.startcol}
 	l.start = l.pos
 	l.startcol = 0
 }
@@ -213,13 +205,13 @@ func lex(input string) (*lexer, chan token) {
 		input = input + "\n"
 	}
 
-	l := &lexer{input: input, output: make(chan token), line: 1, col: 0, indented: true}
+	l := &lexer{input: []rune(input), output: make(chan token), line: 1, col: 0, indented: true}
 	go l.run()
 	return l, l.output
 }
 
 func lexWords(input string) (*lexer, chan token) {
-	l := &lexer{input: input, output: make(chan token), line: 1, col: 0, indented: true, barewords: true}
+	l := &lexer{input: []rune(input), output: make(chan token), line: 1, col: 0, indented: true, barewords: true}
 	go l.run()
 	return l, l.output
 }

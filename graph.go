@@ -155,7 +155,7 @@ func applyrules(rs *ruleSet, g *graph, target string, rulecnt []int) *node {
 			}
 
 			u.flags |= nodeFlagProbable
-			rulecnt[k] += 1
+			rulecnt[k]++
 			if len(r.prereqs) == 0 {
 				u.newedge(nil, r)
 			} else {
@@ -204,7 +204,7 @@ func applyrules(rs *ruleSet, g *graph, target string, rulecnt []int) *node {
 				stem = mat[1]
 			}
 
-			rulecnt[k] += 1
+			rulecnt[k]++
 			if len(r.prereqs) == 0 {
 				e := u.newedge(nil, r)
 				e.stem = stem

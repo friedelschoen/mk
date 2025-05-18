@@ -154,10 +154,8 @@ func TestBasicMaking(t *testing.T) {
 		if !bytes.Equal(want, got) {
 			if !tv.passes {
 				t.Logf("%s expected failure", tv.input)
-				t.Logf("%s: mismatch:\nwant: %s\ngot:  %s", tv.input, string(want), string(got))
-			} else {
-				t.Logf("%s: mismatch:\nwant: %s\ngot:  %s", tv.input, string(want), string(got))
 			}
+			t.Logf("%s: mismatch:\nwant: %s\ngot:  %s", tv.input, want, got)
 		}
 	}
 }
@@ -173,7 +171,7 @@ func TestRecipesHaveEnv(t *testing.T) {
 
 	// Make sure that the output has the right variables in it.
 	// got should be the contents of the environment.
-	envs := make([]string, 0)
+	var envs []string
 	for _, b := range bytes.Split(got, []byte("\n")) {
 		envs = append(envs, string(b))
 	}

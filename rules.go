@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -90,11 +91,9 @@ type ruleSet struct {
 
 // Read attributes for an array of strings, updating the rule.
 func (r *rule) parseAttribs(inputs []string) *attribError {
-	for i := 0; i < len(inputs); i++ {
-		input := inputs[i]
-		pos := 0
-		for pos < len(input) {
-			c, w := utf8.DecodeRuneInString(input[pos:])
+	for i, input := range inputs {
+		for pos, c := range input {
+			w := utf8.RuneLen(c)
 			switch c {
 			case 'D':
 				r.attributes.delFailed = true
@@ -131,8 +130,6 @@ func (r *rule) parseAttribs(inputs []string) *attribError {
 			default:
 				return &attribError{c}
 			}
-
-			pos += w
 		}
 	}
 
@@ -152,28 +149,14 @@ func (rs *ruleSet) add(r rule) {
 }
 
 func isValidVarName(v string) bool {
-	for i := 0; i < len(v); {
-		c, w := utf8.DecodeRuneInString(v[i:])
-		if i == 0 && !(isalpha(c) || c == '_') {
+	for i, c := range v {
+		if i == 0 && !(unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_') {
 			return false
-		} else if !(isalnum(c) || c == '_') {
+		} else if !(unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_') {
 			return false
 		}
-		i += w
 	}
 	return true
-}
-
-func isdigit(c rune) bool {
-	return '0' <= c && c <= '9'
-}
-
-func isalpha(c rune) bool {
-	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
-}
-
-func isalnum(c rune) bool {
-	return isalpha(c) || isdigit(c)
 }
 
 type assignmentError struct {
@@ -191,7 +174,7 @@ func (rs *ruleSet) executeAssignment(ts []token) *assignmentError {
 	}
 
 	// interpret tokens in assignment context
-	input := make([]string, 0)
+	var input []string
 	for i := 1; i < len(ts); i++ {
 		if ts[i].typ != tokenWord || (i > 1 && ts[i-1].typ != tokenWord) {
 			if len(input) == 0 {
@@ -205,9 +188,9 @@ func (rs *ruleSet) executeAssignment(ts []token) *assignmentError {
 	}
 
 	// expanded variables
-	vals := make([]string, 0)
-	for i := 0; i < len(input); i++ {
-		vals = append(vals, expand(input[i], rs.vars, true)...)
+	var vals []string
+	for _, str := range input {
+		vals = append(vals, expand(str, rs.vars, true)...)
 	}
 
 	rs.vars[assignee] = vals

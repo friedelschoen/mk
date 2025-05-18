@@ -5,3 +5,4 @@
 * Robert Kroeger <rjkroege@chromium.org>
 * henesy <henesy.dev@gmail.com>
 * Connor T. Skennerton <c.skennerton@gmail.com>
+* Friedel Schön <derfriedmundschoen@gmail.com>

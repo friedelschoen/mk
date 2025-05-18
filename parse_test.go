@@ -197,11 +197,14 @@ func TestParseOneRuleHTTPPrereq(t *testing.T) {
 
 // Make sure that we can parse assignments that are across multiple lines
 // like:
-// OFILES = a.o\
-//          b.o
-//          c.o
-//prog: $OFILES
-//    cc -o $target $prereqs
+//
+//	OFILES = a.o\
+//	         b.o
+//	         c.o
+//
+// prog: $OFILES
+//
+//	cc -o $target $prereqs
 func TestParseAssignmentNewLine(t *testing.T) {
 	mkfileAsString := "OFILES=9p1.o\\\n9p1lib.o\nprog: $OFILES\n\techo $target"
 

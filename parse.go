@@ -160,19 +160,19 @@ func parsePipeInclude(p *parser, t token) parserStateFun {
 func parseRedirInclude(p *parser, t token) parserStateFun {
 	switch t.typ {
 	case tokenNewline:
-		filename := ""
+		var filenameraw strings.Builder
 		for i := range p.tokenbuf {
-			filename += p.tokenbuf[i].val
+			filenameraw.WriteString(p.tokenbuf[i].val)
 		}
 
 		// Expand variables in paths.
-		parts := expand(filename, p.rules.vars, false)
+		parts := expand(filenameraw.String(), p.rules.vars, false)
 		if len(parts) != 1 {
 			mkError("filename variables need to be a single value")
 		}
 
 		// TODO(rjk): Be sure that this is the right behaviour.
-		filename = parts[0]
+		filename := parts[0]
 
 		input, err := os.ReadFile(filename)
 		if err != nil {
@@ -311,7 +311,7 @@ func parseRecipe(p *parser, t token) parserStateFun {
 
 	// rule has attributes
 	if j < len(p.tokenbuf) {
-		attribs := make([]string, 0)
+		var attribs []string
 		for k := i + 1; k < j; k++ {
 			exparts := expand(p.tokenbuf[k].val, p.rules.vars, true)
 			attribs = append(attribs, exparts...)
@@ -339,7 +339,8 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	}
 
 	// targets
-	r.targets = make([]pattern, 0)
+	// TODO: fact-check, required to be resetted?
+	r.targets = r.targets[:0]
 	for k := 0; k < i; k++ {
 		exparts := expand(p.tokenbuf[k].val, p.rules.vars, true)
 		for i := range exparts {
@@ -379,7 +380,8 @@ func parseRecipe(p *parser, t token) parserStateFun {
 	}
 
 	// prereqs
-	r.prereqs = make([]string, 0)
+	// TODO: fact-check, required to be resetted?
+	r.prereqs = r.prereqs[:0]
 	for k := j + 1; k < len(p.tokenbuf); k++ {
 		exparts := expand(p.tokenbuf[k].val, p.rules.vars, true)
 		r.prereqs = append(r.prereqs, exparts...)

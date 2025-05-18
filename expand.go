@@ -6,79 +6,80 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
 // Expand a word. This includes substituting variables and handling quotes.
 func expand(input string, vars map[string][]string, expandBackticks bool) []string {
-	parts := make([]string, 0)
-	expanded := ""
-	var i, j int
-	for i = 0; i < len(input); {
-		j = strings.IndexAny(input[i:], "\"'`$\\")
+	var parts []string
+	var expanded strings.Builder
+	for len(input) > 0 {
+		j := strings.IndexAny(input, "\"'`$\\")
 
 		if j < 0 {
-			expanded += input[i:]
+			expanded.WriteString(input)
 			break
 		}
-		j += i
 
-		expanded += input[i:j]
-		c, w := utf8.DecodeRuneInString(input[j:])
-		i = j + w
+		expanded.WriteString(input[:j])
+		c := input[j]
+		input = input[j+1:]
 
 		var off int
 		var out string
 		switch c {
 		case '\\':
-			out, off = expandEscape(input[i:])
-			expanded += out
+			out, off = expandEscape(input)
+			expanded.WriteString(out)
 
 		case '"':
-			out, off = expandDoubleQuoted(input[i:], vars, expandBackticks)
-			expanded += out
+			out, off = expandDoubleQuoted(input, vars, expandBackticks)
+			expanded.WriteString(out)
 
 		case '\'':
-			out, off = expandSingleQuoted(input[i:])
-			expanded += out
+			out, off = expandSingleQuoted(input)
+			expanded.WriteString(out)
 
 		case '`':
 			if expandBackticks {
 				var outparts []string
-				outparts, off = expandBackQuoted(input[i:], vars)
+				outparts, off = expandBackQuoted(input, vars)
 				if len(outparts) > 0 {
-					outparts[0] = expanded + outparts[0]
-					expanded = outparts[len(outparts)-1]
+					outparts[0] = expanded.String() + outparts[0]
+					expanded.Reset()
+					expanded.WriteString(outparts[len(outparts)-1])
 					parts = append(parts, outparts[:len(outparts)-1]...)
 				}
 			} else {
 				out = input
 				off = len(input)
-				expanded += out
+				expanded.WriteString(out)
 			}
-
 		case '$':
 			var outparts []string
-			outparts, off = expandSigil(input[i:], vars)
+			outparts, off = expandSigil(input, vars)
 			if len(outparts) > 0 {
-				firstpart := expanded + outparts[0]
+				firstpart := expanded.String() + outparts[0]
 				if len(outparts) > 1 {
 					parts = append(parts, firstpart)
 					if len(outparts) > 2 {
 						parts = append(parts, outparts[1:len(outparts)-1]...)
 					}
-					expanded = outparts[len(outparts)-1]
+					expanded.Reset()
+					expanded.WriteString(outparts[len(outparts)-1])
 				} else {
-					expanded = firstpart
+					expanded.Reset()
+					expanded.WriteString(firstpart)
 				}
 			}
 		}
 
-		i += off
+		input = input[off:]
 	}
 
-	if len(expanded) > 0 {
-		parts = append(parts, expanded)
+	if expanded.Len() > 0 {
+		parts = append(parts, expanded.String())
 	}
 
 	return parts
@@ -187,7 +188,7 @@ func expandSigil(input string, vars map[string][]string) ([]string, int) {
 		j := i
 		for j < len(input) {
 			c, w = utf8.DecodeRuneInString(input[j:])
-			if !(isalpha(c) || c == '_' || (j > i && isdigit(c))) {
+			if !(unicode.IsLetter(c) || c == '_' || (j > i && unicode.IsDigit(c))) {
 				break
 			}
 			j += w
@@ -227,40 +228,46 @@ func expandSigil(input string, vars map[string][]string) ([]string, int) {
 
 // Find and expand all sigils in a recipe, producing a flat string.
 func expandRecipeSigils(input string, vars map[string][]string) string {
-	expanded := ""
-	for i := 0; i < len(input); {
-		off := strings.IndexAny(input[i:], "$\\")
+	var expanded strings.Builder
+	for len(input) > 0 {
+		off := strings.IndexAny(input, "$\\")
 		if off < 0 {
-			expanded += input[i:]
+			expanded.WriteString(input)
 			break
 		}
-		expanded += input[i : i+off]
-		i += off
+		expanded.WriteString(input[:off])
+		input = input[off:]
 
-		c, w := utf8.DecodeRuneInString(input[i:])
+		c, w := utf8.DecodeRuneInString(input)
 		if c == '$' {
-			i += w
-			ex, k := expandSigil(input[i:], vars)
-			expanded += strings.Join(ex, " ")
-			i += k
-		} else if c == '\\' {
-			i += w
-			c, w := utf8.DecodeRuneInString(input[i:])
-			if c == '$' {
-				expanded += "$"
-			} else {
-				expanded += "\\" + string(c)
+			input = input[w:]
+			ex, k := expandSigil(input, vars)
+			for n, s := range ex {
+				if n > 0 {
+					expanded.WriteByte(' ')
+				}
+				expanded.WriteString(s)
 			}
-			i += w
+			input = input[k:]
+		} else if c == '\\' {
+			input = input[w:]
+			c, w := utf8.DecodeRuneInString(input)
+			if c == '$' {
+				expanded.WriteByte('$')
+			} else {
+				expanded.WriteByte('\\')
+				expanded.WriteRune(c)
+			}
+			input = input[w:]
 		}
 	}
 
-	return expanded
+	return expanded.String()
 }
 
 // Expand all unescaped '%' characters.
 func expandSuffixes(input string, stem string) string {
-	expanded := make([]byte, 0)
+	var expanded []byte
 	for i := 0; i < len(input); {
 		j := strings.IndexAny(input[i:], "\\%")
 		if j < 0 {
@@ -313,7 +320,7 @@ func expandBackQuoted(input string, vars map[string][]string) ([]string, int) {
 	// TODO: handle errors
 	output, _ := subprocess(shell, shellargs, env, input[:j], true)
 
-	parts := make([]string, 0)
+	var parts []string
 	_, tokens := lexWords(output)
 	for t := range tokens {
 		parts = append(parts, t.val)

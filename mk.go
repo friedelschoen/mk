@@ -315,7 +315,6 @@ func main() {
 	pflag.BoolVar(&color, "color", term.IsTerminal(int(os.Stdout.Fd())), "turn color on/off")
 	pflag.StringVar(&defaultShell, "shell", "sh -c", "default shell to use if none are specified via $shell")
 	pflag.BoolVar(&dontDropArgs, "drop-shell-arg", false, "don't drop shell arguments when no further arguments are specified")
-	// TODO(rjk): P9P mk command line compatability.
 	pflag.Parse()
 
 	if directory != "" {

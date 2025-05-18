@@ -10,7 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"unicode/utf8"
+	"unicode"
 )
 
 // Try to unindent a recipe, so that it begins an column 0. (This is mainly for
@@ -18,28 +18,26 @@ import (
 func stripIndentation(s string, mincol int) string {
 	// trim leading whitespace
 	reader := bufio.NewReader(strings.NewReader(s))
-	output := ""
+	var output strings.Builder
 	for {
 		line, err := reader.ReadString('\n')
 		col := 0
-		i := 0
-		for i < len(line) && col < mincol {
-			c, w := utf8.DecodeRuneInString(line[i:])
-			if strings.ContainsRune(" \t\n", c) {
-				col += 1
-				i += w
-			} else {
+		for _, c := range line {
+			if col >= mincol {
 				break
 			}
+			if !unicode.IsSpace(c) {
+				break
+			}
+			col++
 		}
-		output += line[i:]
-
+		output.WriteString(line[col:])
 		if err != nil {
 			break
 		}
 	}
 
-	return output
+	return output.String()
 }
 
 // Indent each line of a recipe.
@@ -80,7 +78,7 @@ func dorecipe(target string, u *node, e *edge, dryrun bool) bool {
 	// alltargets
 	// newprereq
 
-	prereqs := make([]string, 0)
+	var prereqs []string
 	for i := range u.prereqs {
 		if u.prereqs[i].r == e.r && u.prereqs[i].v != nil {
 			prereqs = append(prereqs, u.prereqs[i].v.name)
@@ -161,7 +159,7 @@ func subprocess(program string,
 
 	attr := os.ProcAttr{Env: env, Files: []*os.File{stdin_pipe_read, os.Stdout, os.Stderr}}
 
-	output := make([]byte, 0)
+	var output []byte
 	capture_done := make(chan bool)
 	if capture_out {
 		stdout_pipe_read, stdout_pipe_write, err := os.Pipe()
