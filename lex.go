@@ -70,16 +70,17 @@ func (t *token) String() string {
 }
 
 type lexer struct {
-	input     []rune     // input string to be lexed
-	output    chan token // channel on which tokens are sent
-	start     int        // token beginning
-	startcol  int        // column on which the token begins
-	pos       int        // position within input
-	line      int        // line within input
-	col       int        // column within input
-	errmsg    string     // set to an appropriate error message when necessary
-	indented  bool       // true if the only whitespace so far on this line
-	barewords bool       // lex only a sequence of words
+	input     []rune  // input string to be lexed
+	output    []token // channel on which tokens are sent
+	start     int     // token beginning
+	startcol  int     // column on which the token begins
+	pos       int     // position within input
+	line      int     // line within input
+	col       int     // column within input
+	errmsg    string  // set to an appropriate error message when necessary
+	indented  bool    // true if the only whitespace so far on this line
+	barewords bool    // lex only a sequence of words
+	state     lexerStateFun
 }
 
 // A lexerStateFun is simultaneously the the state of the lexer and the next
@@ -136,7 +137,7 @@ func (l *lexer) skip() {
 }
 
 func (l *lexer) emit(typ tokenType) {
-	l.output <- token{typ, string(l.input[l.start:l.pos]), l.line, l.startcol}
+	l.output = append(l.output, token{typ, string(l.input[l.start:l.pos]), l.line, l.startcol})
 	l.start = l.pos
 	l.startcol = 0
 }
@@ -199,28 +200,29 @@ func (l *lexer) skipUntil(invalid string) {
 }
 
 // Start a new lexer to lex the given input.
-func lex(input string) (*lexer, chan token) {
+func lex(input string) *lexer {
 	// Files without a trailing newline are considered to have one.
 	if len(input) > 0 && input[len(input)-1] != '\n' {
 		input = input + "\n"
 	}
 
-	l := &lexer{input: []rune(input), output: make(chan token), line: 1, col: 0, indented: true}
-	go l.run()
-	return l, l.output
+	return &lexer{input: []rune(input), line: 1, col: 0, indented: true, state: lexTopLevel}
 }
 
-func lexWords(input string) (*lexer, chan token) {
-	l := &lexer{input: []rune(input), output: make(chan token), line: 1, col: 0, indented: true, barewords: true}
-	go l.run()
-	return l, l.output
+func lexWords(input string) *lexer {
+	return &lexer{input: []rune(input), line: 1, col: 0, indented: true, barewords: true, state: lexTopLevel}
 }
 
-func (l *lexer) run() {
-	for state := lexTopLevel; state != nil; {
-		state = state(l)
+func (l *lexer) nextToken() (token, bool) {
+	for l.state != nil && len(l.output) == 0 {
+		l.state = l.state(l)
 	}
-	close(l.output)
+	if len(l.output) == 0 {
+		return token{}, false
+	}
+	tok := l.output[0]
+	l.output = l.output[1:]
+	return tok, true
 }
 
 func lexTopLevel(l *lexer) lexerStateFun {

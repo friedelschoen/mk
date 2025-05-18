@@ -61,12 +61,16 @@ func parse(input string, name string, path string, env map[string][]string) *rul
 
 // Parse a mkfile inserting rules and variables into a given ruleSet.
 func parseInto(input string, name string, rules *ruleSet, path string) {
-	l, tokens := lex(input)
+	l := lex(input)
 	p := &parser{l, name, path, []token{}, rules}
 	oldmkfiledir := p.rules.vars["mkfiledir"]
 	p.rules.vars["mkfiledir"] = []string{filepath.Dir(path)}
 	state := parseTopLevel
-	for t := range tokens {
+	for {
+		t, ok := l.nextToken()
+		if !ok {
+			break
+		}
 		if t.typ == tokenError {
 			p.basicErrorAtLine(l.errmsg, t.line)
 			break
