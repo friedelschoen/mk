@@ -321,7 +321,7 @@ func expandBackQuoted(input string, vars map[string][]string) ([]string, int) {
 	output, _ := subprocess(shell, shellargs, env, input[:j], true)
 
 	var parts []string
-	tokens := lexWords(output)
+	tokens := lexWords(strings.NewReader(output))
 	for {
 		t, ok := tokens.nextToken()
 		if !ok {

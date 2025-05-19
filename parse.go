@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,7 +52,7 @@ func (p *parser) clear() {
 type parserStateFun func(*parser, token) parserStateFun
 
 // Parse a mkfile, returning a new ruleSet.
-func parse(input string, name string, path string, env map[string][]string) *ruleSet {
+func parse(input io.Reader, name string, path string, env map[string][]string) *ruleSet {
 	rules := &ruleSet{env,
 		make([]rule, 0),
 		make(map[string][]int)}
@@ -60,7 +61,7 @@ func parse(input string, name string, path string, env map[string][]string) *rul
 }
 
 // Parse a mkfile inserting rules and variables into a given ruleSet.
-func parseInto(input string, name string, rules *ruleSet, path string) {
+func parseInto(input io.Reader, name string, rules *ruleSet, path string) {
 	l := lex(input)
 	p := &parser{l, name, path, []token{}, rules}
 	oldmkfiledir := p.rules.vars["mkfiledir"]
@@ -138,7 +139,7 @@ func parsePipeInclude(p *parser, t token) parserStateFun {
 			p.basicErrorAtToken("subprocess include failed", t)
 		}
 
-		parseInto(output, prettyPipeIncludeName(args), p.rules, p.path)
+		parseInto(strings.NewReader(output), prettyPipeIncludeName(args), p.rules, p.path)
 		p.clear()
 		return parseTopLevel
 	// Almost anything goes. Let the shell sort it out.
@@ -178,17 +179,18 @@ func parseRedirInclude(p *parser, t token) parserStateFun {
 		// TODO(rjk): Be sure that this is the right behaviour.
 		filename := parts[0]
 
-		input, err := os.ReadFile(filename)
+		input, err := os.Open(filename)
 		if err != nil {
 			p.basicErrorAtToken(fmt.Sprintf("cannot open %s", filename), p.tokenbuf[0])
 		}
+		defer input.Close()
 
 		path, err := filepath.Abs(filename)
 		if err != nil {
 			mkError("unable to find mkfile's absolute path")
 		}
 
-		parseInto(string(input), filename, p.rules, path)
+		parseInto(input, filename, p.rules, path)
 
 		p.clear()
 		return parseTopLevel

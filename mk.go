@@ -324,10 +324,11 @@ func main() {
 		}
 	}
 
-	input, err := os.ReadFile(mkfilepath)
+	input, err := os.Open(mkfilepath)
 	if err != nil {
 		mkError("no mkfile found")
 	}
+	defer input.Close()
 
 	abspath, err := filepath.Abs(mkfilepath)
 	if err != nil {
@@ -340,7 +341,7 @@ func main() {
 		env[vals[0]] = append(env[vals[0]], vals[1])
 	}
 
-	rs := parse(string(input), mkfilepath, abspath, env)
+	rs := parse(input, mkfilepath, abspath, env)
 	if quiet {
 		for i := range rs.rules {
 			rs.rules[i].attributes.quiet = true

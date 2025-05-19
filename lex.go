@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"unicode"
@@ -70,9 +71,9 @@ func (t *token) String() string {
 }
 
 type lexer struct {
-	input     []rune  // input string to be lexed
+	reader            // input string to be lexed
 	output    []token // channel on which tokens are sent
-	start     int     // token beginning
+	value     []rune  // token beginning
 	startcol  int     // column on which the token begins
 	pos       int     // position within input
 	line      int     // line within input
@@ -94,26 +95,14 @@ func (l *lexer) lexerror(what string) {
 	l.emit(tokenError)
 }
 
-// Return the nth character without advancing.
-func (l *lexer) peekN(n int) rune {
-	if l.pos+n >= len(l.input) {
-		return 0
-	}
-	return l.input[l.pos+n]
-}
-
-// Return the next character without advancing.
-func (l *lexer) peek() rune {
-	return l.peekN(0)
-}
-
 // Consume and return the next character in the lexer input.
 func (l *lexer) next() rune {
-	if l.pos >= len(l.input) {
+	c := l.reader.next()
+	if c == eof {
 		return eof
 	}
-	c := l.input[l.pos]
 	l.pos++
+	l.value = append(l.value, c)
 
 	if c == '\n' {
 		l.col = 0
@@ -132,19 +121,20 @@ func (l *lexer) next() rune {
 // Skip and return the next character in the lexer input.
 func (l *lexer) skip() {
 	l.next()
-	l.start = l.pos
+	l.value = l.value[:0]
 	l.startcol = l.col
 }
 
 func (l *lexer) emit(typ tokenType) {
-	l.output = append(l.output, token{typ, string(l.input[l.start:l.pos]), l.line, l.startcol})
-	l.start = l.pos
+	l.output = append(l.output, token{typ, string(l.value), l.line, l.startcol})
+	l.value = l.value[:0]
 	l.startcol = 0
 }
 
 // Consume the next run if it is in the given string.
 func (l *lexer) accept(valid string) bool {
-	if strings.ContainsRune(valid, l.peek()) {
+	peek := l.peek()
+	if peek != eof && strings.ContainsRune(valid, peek) {
 		l.next()
 		return true
 	}
@@ -154,7 +144,11 @@ func (l *lexer) accept(valid string) bool {
 // Consume characters from the valid string until the next is not.
 func (l *lexer) acceptRun(valid string) int {
 	prevpos := l.pos
-	for strings.ContainsRune(valid, l.peek()) {
+	for {
+		peek := l.peek()
+		if peek == eof || !strings.ContainsRune(valid, peek) {
+			break
+		}
 		l.next()
 	}
 	return l.pos - prevpos
@@ -162,7 +156,11 @@ func (l *lexer) acceptRun(valid string) int {
 
 // Accept until something from the given string is encountered.
 func (l *lexer) acceptUntil(invalid string) {
-	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
+	for {
+		peek := l.peek()
+		if peek == eof || strings.ContainsRune(invalid, peek) {
+			break
+		}
 		l.next()
 	}
 
@@ -174,7 +172,11 @@ func (l *lexer) acceptUntil(invalid string) {
 // Accept until something from the given string is encountered, or the end of th
 // file
 func (l *lexer) acceptUntilOrEof(invalid string) {
-	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
+	for {
+		peek := l.peek()
+		if peek == eof || strings.ContainsRune(invalid, peek) {
+			break
+		}
 		l.next()
 	}
 }
@@ -190,7 +192,11 @@ func (l *lexer) skipRun(valid string) int {
 
 // Skip until something from the given string is encountered.
 func (l *lexer) skipUntil(invalid string) {
-	for l.pos < len(l.input) && !strings.ContainsRune(invalid, l.peek()) {
+	for {
+		peek := l.peek()
+		if peek == eof || strings.ContainsRune(invalid, peek) {
+			break
+		}
 		l.skip()
 	}
 
@@ -200,17 +206,19 @@ func (l *lexer) skipUntil(invalid string) {
 }
 
 // Start a new lexer to lex the given input.
-func lex(input string) *lexer {
+func lex(r io.Reader) *lexer {
 	// Files without a trailing newline are considered to have one.
-	if len(input) > 0 && input[len(input)-1] != '\n' {
-		input = input + "\n"
-	}
+	// if len(input) > 0 && input[len(input)-1] != '\n' {
+	// 	input = input + "\n"
+	// }
 
-	return &lexer{input: []rune(input), line: 1, col: 0, indented: true, state: lexTopLevel}
+	rd := reader{rd: r, buf: make([]byte, 1024)}
+	return &lexer{reader: rd, line: 1, col: 0, indented: true, state: lexTopLevel}
 }
 
-func lexWords(input string) *lexer {
-	return &lexer{input: []rune(input), line: 1, col: 0, indented: true, barewords: true, state: lexTopLevel}
+func lexWords(r io.Reader) *lexer {
+	rd := reader{rd: r, buf: make([]byte, 1024)}
+	return &lexer{reader: rd, line: 1, col: 0, indented: true, barewords: true, state: lexTopLevel}
 }
 
 func (l *lexer) nextToken() (token, bool) {
@@ -343,7 +351,7 @@ func lexRecipe(l *lexer) lexerStateFun {
 		}
 	}
 
-	if !onlyWhitespace(l.input[l.start:l.pos]) {
+	if !onlyWhitespace(l.value) {
 		l.emit(tokenRecipe)
 	}
 	return lexTopLevel
@@ -361,7 +369,7 @@ func lexBareWord(l *lexer) lexerStateFun {
 	} else if c == '\\' {
 		c1 := l.peekN(1)
 		if c1 == '\n' || c1 == '\r' {
-			if l.start < l.pos {
+			if len(l.value) > 0 {
 				l.emit(tokenWord)
 			}
 			l.skip()
@@ -382,7 +390,7 @@ func lexBareWord(l *lexer) lexerStateFun {
 		}
 	}
 
-	if l.start < l.pos {
+	if len(l.value) > 0 {
 		l.emit(tokenWord)
 	}
 
