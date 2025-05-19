@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"unicode"
@@ -317,11 +319,18 @@ func expandBackQuoted(input string, vars map[string][]string) ([]string, int) {
 		shell, shellargs = expandShell(vars["shell"][0], shellargs)
 	}
 
-	// TODO: handle errors
-	output, _ := subprocess(shell, shellargs, env, input[:j], true)
+	var output bytes.Buffer
+	cmd := exec.Command(shell, shellargs...)
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader(input[:j])
+	cmd.Stdout = &output
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		// TODO: handle errors
+	}
 
 	var parts []string
-	tokens := lexWords(strings.NewReader(output))
+	tokens := lexWords(&output)
 	for {
 		t, ok := tokens.nextToken()
 		if !ok {

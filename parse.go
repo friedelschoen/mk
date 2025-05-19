@@ -4,9 +4,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -134,12 +136,17 @@ func parsePipeInclude(p *parser, t token) parserStateFun {
 		}
 
 		// TODO(rjk): determine what env should be in comparison with p9p.
-		output, success := subprocess(args[0], args[1:], nil, "", true)
-		if !success {
+
+		var output bytes.Buffer
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdin = nil
+		cmd.Stdout = &output
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
 			p.basicErrorAtToken("subprocess include failed", t)
 		}
 
-		parseInto(strings.NewReader(output), prettyPipeIncludeName(args), p.rules, p.path)
+		parseInto(&output, prettyPipeIncludeName(args), p.rules, p.path)
 		p.clear()
 		return parseTopLevel
 	// Almost anything goes. Let the shell sort it out.
