@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"slices"
 	"strings"
@@ -134,10 +133,6 @@ func (l *lexer) acceptUntil(invalid string) {
 		}
 		l.next()
 	}
-
-	if l.peek() == utf8.RuneError {
-		l.lexerror(fmt.Sprintf("end of file encountered while looking for one of: %s", invalid))
-	}
 }
 
 // Accept until something from the given string is encountered, or the end of th
@@ -169,10 +164,6 @@ func (l *lexer) skipUntil(invalid string) {
 			break
 		}
 		l.skip()
-	}
-
-	if l.peek() == utf8.RuneError {
-		l.lexerror(fmt.Sprintf("end of file encountered while looking for one of: %s", invalid))
 	}
 }
 

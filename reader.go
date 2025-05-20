@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -87,11 +86,7 @@ func (l *reader) ensure(count int) bool {
 			l.begin = 0
 		}
 		n, err := l.rd.Read(l.buf[l.end:])
-		if errors.Is(err, io.EOF) && l.buf[l.end] != '\n' && !l.eof {
-			l.buf[l.end] = '\n'
-			n = 1
-			l.eof = true
-		} else if err != nil {
+		if err != nil {
 			break
 		}
 		l.end += n
