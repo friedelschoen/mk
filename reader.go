@@ -13,6 +13,7 @@ type reader struct {
 	begin int
 	end   int
 
+	eof      bool
 	value    []rune // token beginning
 	pos      int    // position within input
 	line     int    // line within input
@@ -20,8 +21,8 @@ type reader struct {
 	indented bool   // true if the only whitespace so far on this line
 }
 
-func newReader(rd io.Reader) reader {
-	return reader{rd: rd, buf: make([]byte, 1024), line: 1, indented: true}
+func newReader(rd io.Reader) *reader {
+	return &reader{rd: rd, buf: make([]byte, 1024), line: 1, indented: true}
 }
 
 // Return the nth character without advancing.
@@ -86,9 +87,10 @@ func (l *reader) ensure(count int) bool {
 			l.begin = 0
 		}
 		n, err := l.rd.Read(l.buf[l.end:])
-		if errors.Is(err, io.EOF) && l.buf[l.end] != '\n' {
+		if errors.Is(err, io.EOF) && l.buf[l.end] != '\n' && !l.eof {
 			l.buf[l.end] = '\n'
 			n = 1
+			l.eof = true
 		} else if err != nil {
 			break
 		}

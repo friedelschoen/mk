@@ -70,7 +70,7 @@ func (t *token) String() string {
 }
 
 type lexer struct {
-	reader            // input string to be lexed
+	*reader           // input string to be lexed
 	output    []token // channel on which tokens are sent
 	startcol  int     // column on which the token begins
 	errmsg    string  // set to an appropriate error message when necessary
