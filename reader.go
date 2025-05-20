@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -11,6 +12,16 @@ type reader struct {
 	buf   []byte
 	begin int
 	end   int
+
+	value    []rune // token beginning
+	pos      int    // position within input
+	line     int    // line within input
+	col      int    // column within input
+	indented bool   // true if the only whitespace so far on this line
+}
+
+func newReader(rd io.Reader) reader {
+	return reader{rd: rd, buf: make([]byte, 1024), line: 1, indented: true}
 }
 
 // Return the nth character without advancing.
@@ -39,6 +50,21 @@ func (l *reader) next() rune {
 	}
 	c, w := utf8.DecodeRune(l.window())
 	l.begin += w
+
+	l.pos++
+	l.value = append(l.value, c)
+
+	if c == '\n' {
+		l.col = 0
+		l.line++
+		l.indented = true
+	} else {
+		l.col++
+		if !strings.ContainsRune(" \t", c) {
+			l.indented = false
+		}
+	}
+
 	return c
 }
 

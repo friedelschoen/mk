@@ -64,7 +64,7 @@ func parse(input io.Reader, name string, path string, env map[string][]string) *
 
 // Parse a mkfile inserting rules and variables into a given ruleSet.
 func parseInto(input io.Reader, name string, rules *ruleSet, path string) {
-	l := lex(input)
+	l := lex(input, false)
 	p := &parser{l, name, path, []token{}, rules}
 	oldmkfiledir := p.rules.vars["mkfiledir"]
 	p.rules.vars["mkfiledir"] = []string{filepath.Dir(path)}

@@ -330,7 +330,7 @@ func expandBackQuoted(input string, vars map[string][]string) ([]string, int) {
 	}
 
 	var parts []string
-	tokens := lexWords(&output)
+	tokens := lex(&output, true)
 	for {
 		t, ok := tokens.nextToken()
 		if !ok {

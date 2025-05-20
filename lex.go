@@ -73,13 +73,8 @@ func (t *token) String() string {
 type lexer struct {
 	reader            // input string to be lexed
 	output    []token // channel on which tokens are sent
-	value     []rune  // token beginning
 	startcol  int     // column on which the token begins
-	pos       int     // position within input
-	line      int     // line within input
-	col       int     // column within input
 	errmsg    string  // set to an appropriate error message when necessary
-	indented  bool    // true if the only whitespace so far on this line
 	barewords bool    // lex only a sequence of words
 	state     lexerStateFun
 }
@@ -93,29 +88,6 @@ func (l *lexer) lexerror(what string) {
 		l.errmsg = what
 	}
 	l.emit(tokenError)
-}
-
-// Consume and return the next character in the lexer input.
-func (l *lexer) next() rune {
-	c := l.reader.next()
-	if c == eof {
-		return eof
-	}
-	l.pos++
-	l.value = append(l.value, c)
-
-	if c == '\n' {
-		l.col = 0
-		l.line++
-		l.indented = true
-	} else {
-		l.col++
-		if !strings.ContainsRune(" \t", c) {
-			l.indented = false
-		}
-	}
-
-	return c
 }
 
 // Skip and return the next character in the lexer input.
@@ -206,19 +178,8 @@ func (l *lexer) skipUntil(invalid string) {
 }
 
 // Start a new lexer to lex the given input.
-func lex(r io.Reader) *lexer {
-	// Files without a trailing newline are considered to have one.
-	// if len(input) > 0 && input[len(input)-1] != '\n' {
-	// 	input = input + "\n"
-	// }
-
-	rd := reader{rd: r, buf: make([]byte, 1024)}
-	return &lexer{reader: rd, line: 1, col: 0, indented: true, state: lexTopLevel}
-}
-
-func lexWords(r io.Reader) *lexer {
-	rd := reader{rd: r, buf: make([]byte, 1024)}
-	return &lexer{reader: rd, line: 1, col: 0, indented: true, barewords: true, state: lexTopLevel}
+func lex(r io.Reader, barewords bool) *lexer {
+	return &lexer{reader: newReader(r), barewords: barewords, state: lexTopLevel}
 }
 
 func (l *lexer) nextToken() (token, bool) {
