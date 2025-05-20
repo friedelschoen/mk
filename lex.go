@@ -6,11 +6,10 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 type tokenType int
-
-const eof rune = '\u0000'
 
 // Rune's that cannot be part of a bare (unquoted) string.
 const nonBareRunes = " \t\n\r\\=:#'\"$"
@@ -106,7 +105,7 @@ func (l *lexer) emit(typ tokenType) {
 // Consume the next run if it is in the given string.
 func (l *lexer) accept(valid string) bool {
 	peek := l.peek()
-	if peek != eof && strings.ContainsRune(valid, peek) {
+	if peek != utf8.RuneError && strings.ContainsRune(valid, peek) {
 		l.next()
 		return true
 	}
@@ -118,7 +117,7 @@ func (l *lexer) acceptRun(valid string) int {
 	prevpos := l.pos
 	for {
 		peek := l.peek()
-		if peek == eof || !strings.ContainsRune(valid, peek) {
+		if peek == utf8.RuneError || !strings.ContainsRune(valid, peek) {
 			break
 		}
 		l.next()
@@ -130,13 +129,13 @@ func (l *lexer) acceptRun(valid string) int {
 func (l *lexer) acceptUntil(invalid string) {
 	for {
 		peek := l.peek()
-		if peek == eof || strings.ContainsRune(invalid, peek) {
+		if peek == utf8.RuneError || strings.ContainsRune(invalid, peek) {
 			break
 		}
 		l.next()
 	}
 
-	if l.peek() == eof {
+	if l.peek() == utf8.RuneError {
 		l.lexerror(fmt.Sprintf("end of file encountered while looking for one of: %s", invalid))
 	}
 }
@@ -146,7 +145,7 @@ func (l *lexer) acceptUntil(invalid string) {
 func (l *lexer) acceptUntilOrEof(invalid string) {
 	for {
 		peek := l.peek()
-		if peek == eof || strings.ContainsRune(invalid, peek) {
+		if peek == utf8.RuneError || strings.ContainsRune(invalid, peek) {
 			break
 		}
 		l.next()
@@ -166,13 +165,13 @@ func (l *lexer) skipRun(valid string) int {
 func (l *lexer) skipUntil(invalid string) {
 	for {
 		peek := l.peek()
-		if peek == eof || strings.ContainsRune(invalid, peek) {
+		if peek == utf8.RuneError || strings.ContainsRune(invalid, peek) {
 			break
 		}
 		l.skip()
 	}
 
-	if l.peek() == eof {
+	if l.peek() == utf8.RuneError {
 		l.lexerror(fmt.Sprintf("end of file encountered while looking for one of: %s", invalid))
 	}
 }
@@ -223,7 +222,7 @@ func lexTopLevel(l *lexer) lexerStateFun {
 
 	c := l.peek()
 	switch c {
-	case eof:
+	case utf8.RuneError:
 		return nil
 	case '#':
 		return lexComment
@@ -274,14 +273,14 @@ func lexInclude(l *lexer) lexerStateFun {
 
 func lexDoubleQuotedWord(l *lexer) lexerStateFun {
 	l.next() // '"'
-	for l.peek() != '"' && l.peek() != eof {
+	for l.peek() != '"' && l.peek() != utf8.RuneError {
 		l.acceptUntil("\\\"")
 		if l.accept("\\") {
 			l.accept("\"")
 		}
 	}
 
-	if l.peek() == eof {
+	if l.peek() == utf8.RuneError {
 		l.lexerror("end of file encountered while parsing a quoted string.")
 	}
 

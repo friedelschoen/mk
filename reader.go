@@ -27,7 +27,7 @@ func newReader(rd io.Reader) reader {
 // Return the nth character without advancing.
 func (l *reader) peekN(n int) rune {
 	if !l.ensure(n + 1) {
-		return eof
+		return utf8.RuneError
 	}
 	win := l.window()
 	for range n {
@@ -46,7 +46,7 @@ func (l *reader) peek() rune {
 // Consume and return the next character in the lexer input.
 func (l *reader) next() rune {
 	if !l.ensure(1) {
-		return eof
+		return utf8.RuneError
 	}
 	c, w := utf8.DecodeRune(l.window())
 	l.begin += w
