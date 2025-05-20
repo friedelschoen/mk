@@ -39,10 +39,10 @@ const (
 type nodeFlag int
 
 const (
-	nodeFlagCycle    nodeFlag = 0x0002
-	nodeFlagReady    nodeFlag = 0x0004
-	nodeFlagProbable nodeFlag = 0x0100
-	nodeFlagVacuous  nodeFlag = 0x0200
+	nodeFlagCycle nodeFlag = 1 << iota
+	nodeFlagReady
+	nodeFlagProbable
+	nodeFlagVacuous
 )
 
 // A node in the dependency graph
