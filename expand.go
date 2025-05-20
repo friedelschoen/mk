@@ -3,7 +3,7 @@
 package main
 
 import (
-	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
@@ -319,24 +319,33 @@ func expandBackQuoted(input string, vars map[string][]string) ([]string, int) {
 		shell, shellargs = expandShell(vars["shell"][0], shellargs)
 	}
 
-	var output bytes.Buffer
 	cmd := exec.Command(shell, shellargs...)
 	cmd.Env = env
 	cmd.Stdin = strings.NewReader(input[:j])
-	cmd.Stdout = &output
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		// TODO: handle errors
+	output, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to create pipe: %v", err)
+		return nil, 0
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to start process: %v", err)
+		return nil, 0
 	}
 
 	var parts []string
-	tokens := lex(&output, true)
+	tokens := lex(output, true)
 	for {
 		t, ok := tokens.nextToken()
 		if !ok {
 			break
 		}
 		parts = append(parts, t.val)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		fmt.Fprintf(os.Stderr, "unable to wait for process: %v", err)
+		return nil, 0
 	}
 
 	return parts, (j + 1)

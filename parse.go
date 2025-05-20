@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -137,17 +136,25 @@ func parsePipeInclude(p *parser, t token) parserStateFun {
 
 		// TODO(rjk): determine what env should be in comparison with p9p.
 
-		var output bytes.Buffer
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Stdin = nil
-		cmd.Stdout = &output
 		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			p.basicErrorAtToken("subprocess include failed", t)
+		output, err := cmd.StdoutPipe()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to create pipe: %v", err)
+			return nil
+		}
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to start process: %v", err)
+			return nil
 		}
 
-		parseInto(&output, prettyPipeIncludeName(args), p.rules, p.path)
+		parseInto(output, prettyPipeIncludeName(args), p.rules, p.path)
 		p.clear()
+		if err := cmd.Wait(); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to wait for process: %v", err)
+			return nil
+		}
 		return parseTopLevel
 	// Almost anything goes. Let the shell sort it out.
 	case tokenPipeInclude:
