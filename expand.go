@@ -140,14 +140,13 @@ func expandSingleQuoted(input string) (string, int) {
 	return input[:j], (j + 1)
 }
 
-var expandSigil_namelist_pattern = regexp.MustCompile(`^\s*([^:]+)\s*:\s*([^%]*)%([^=]*)\s*=\s*([^%]*)%([^%]*)\s*`)
+var namelistPattern = regexp.MustCompile(`^\s*([^:]+)\s*:\s*([^%]*)%([^=]*)\s*=\s*([^%]*)%([^%]*)\s*`)
 
 // Expand something starting with at '$'.
 func expandSigil(input string, vars map[string][]string) ([]string, int) {
 	c, w := utf8.DecodeRuneInString(input)
 	var offset int
 	var varname string
-	namelist_pattern := expandSigil_namelist_pattern
 
 	if c == '$' { // escaping of "$" with "$$"
 		return []string{"$"}, 2
@@ -160,7 +159,7 @@ func expandSigil(input string, vars map[string][]string) ([]string, int) {
 		offset = w + j + 1
 
 		// is this a namelist?
-		mat := namelist_pattern.FindStringSubmatch(varname)
+		mat := namelistPattern.FindStringSubmatch(varname)
 		if mat != nil && isValidVarName(mat[1]) {
 			// ${varname:a%b=c%d}
 			varname = mat[1]
@@ -171,18 +170,18 @@ func expandSigil(input string, vars map[string][]string) ([]string, int) {
 			}
 
 			pat := regexp.MustCompile(strings.Join([]string{`^\Q`, a, `\E(.*)\Q`, b, `\E$`}, ""))
-			expanded_values := make([]string, 0, len(values))
+			expandedValues := make([]string, 0, len(values))
 			for _, value := range values {
-				value_match := pat.FindStringSubmatch(value)
-				if value_match != nil {
-					expanded_values = append(expanded_values, expand(strings.Join([]string{c, value_match[1], d}, ""), vars, false)...)
+				valueMatch := pat.FindStringSubmatch(value)
+				if valueMatch != nil {
+					expandedValues = append(expandedValues, expand(strings.Join([]string{c, valueMatch[1], d}, ""), vars, false)...)
 				} else {
 					// What case is this?
-					expanded_values = append(expanded_values, value)
+					expandedValues = append(expandedValues, value)
 				}
 			}
 
-			return expanded_values, offset
+			return expandedValues, offset
 		}
 	} else { // bare variables: $foo
 		// try to match a variable name
@@ -374,12 +373,6 @@ func expandShell(shcmd string, args []string) (string, []string) {
 
 	default:
 		//fmt.Println("dropping in expand!")
-	}
-
-	if len(shellargs) > 0 && dontDropArgs {
-
-	} else {
-
 	}
 
 	return shell, args

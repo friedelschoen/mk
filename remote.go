@@ -13,7 +13,7 @@ import (
 )
 
 // for files that are http(s) urls, use the Last-Modified header
-func updateHttpTimestamp(u *node) {
+func updateHTTPTimestamp(u *node) {
 	resp, err := http.Head(u.name)
 	if err != nil {
 		log.Fatal(err)

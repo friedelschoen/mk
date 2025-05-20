@@ -202,8 +202,8 @@ func mkNode(g *graph, u *node, dryrun bool, required bool) {
 		mkError(fmt.Sprintf("don't know how to make %s in %s", u.name, wd))
 	}
 
-	prereqs_required := required && (e.r.attributes.virtual || !u.exists)
-	mkNodePrereqs(g, u, e, prereqs, dryrun, prereqs_required)
+	prereqsRequired := required && (e.r.attributes.virtual || !u.exists)
+	mkNodePrereqs(g, u, e, prereqs, dryrun, prereqsRequired)
 
 	uptodate := true
 	if !e.r.attributes.virtual {

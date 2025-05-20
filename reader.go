@@ -15,7 +15,6 @@ type reader struct {
 	begin int
 	end   int
 
-	eof      bool
 	value    []rune // token beginning
 	pos      int    // position within input
 	line     int    // line within input
