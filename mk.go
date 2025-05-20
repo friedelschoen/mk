@@ -50,6 +50,9 @@ var (
 	// This limits recursion of both meta- and non-meta-rules!
 	// Maybe, this shouldn't affect meta-rules?!
 	maxRuleCnt int = 1
+
+	// delimiter for lists in environment, defaults to '\x01' when defaultShell==rc otherwise ':'
+	shellDelimiter string
 )
 
 // Wait until there is an available subprocess slot.
@@ -302,6 +305,7 @@ func main() {
 	var dryrun bool
 	var shallowrebuild bool
 	var quiet bool
+	var shellOS string
 
 	pflag.StringVarP(&directory, "directory", "C", "", "directory to change in to")
 	pflag.StringVarP(&mkfilepath, "file", "f", "mkfile", "use the given file as mkfile")
@@ -315,7 +319,15 @@ func main() {
 	pflag.BoolVar(&color, "color", term.IsTerminal(int(os.Stdout.Fd())), "turn color on/off")
 	pflag.StringVar(&defaultShell, "shell", "sh -c", "default shell to use if none are specified via $shell")
 	pflag.BoolVar(&dontDropArgs, "drop-shell-arg", false, "don't drop shell arguments when no further arguments are specified")
+	pflag.StringVar(&shellOS, "shell-delimiter", runtime.GOOS, "delimiter in a list in the environment")
 	pflag.Parse()
+
+	switch shellOS {
+	case "plan9":
+		shellDelimiter = "\x01"
+	default:
+		shellDelimiter = ":"
+	}
 
 	if directory != "" {
 		err := os.Chdir(directory)
