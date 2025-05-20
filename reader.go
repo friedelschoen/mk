@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"unicode/utf8"
 )
@@ -87,6 +90,9 @@ func (l *reader) ensure(count int) bool {
 		}
 		n, err := l.rd.Read(l.buf[l.end:])
 		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				fmt.Fprintf(os.Stderr, "unable to read from stream: %v", err)
+			}
 			break
 		}
 		l.end += n
